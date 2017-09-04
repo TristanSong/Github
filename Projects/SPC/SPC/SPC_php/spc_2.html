@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="3600">
+<title>CNC NOVA SPC Dashboard</title>
+<script src="./jquery-3.2.1.min.js"></script>
+<script src="./echarts.min.js"></script>
+</head>
+<body>
+	<h1 align="center">CNC NOVA SPC Dashboard</h1>
+	<hr>
+	<!--创建用于放置图表的画布-->
+	<div id='spcContainer' style='width: 1340px; height: 325px;'></div>
+	<div id='diffContainer' style='width: 1340px; height: 325px;'></div>
+	<script>
+	//从localStorage中获取展示的spc_name及显示数量
+	var storage = window.localStorage;
+	var X_TIME=[], LIMIT_UP=[], LIMIT_MID=[], LIMIT_DOWN=[], UCL=[], LCL=[], AVE=[], DIFF=[], AVE_EACH=[], x_data=[];
+	var len;
+	
+	//调用ajax实现异步加载数据(先传参，再调用php提取的数据库数据)
+	//返回数据为字符串类型数组
+	function get_results(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/SPC/spc_result.php",
+			data:{name:storage.getItem('name'), num:storage.getItem('num')},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						//Javascript中数组操作
+						//var a=array(1, 2), var b=array(2, 3)
+						//a.push(b): [1, 2, [2, 3]], 解决方法是使用for循环，繁琐
+						//a.push.apply(a, b)等于a.push(2, 3), 结果为[1, 2, 2, 3]
+						//c=a.concat(b): a=[1, 2], b=[2, 3]均不变，c=[1,2,2,3],但比较占用内存
+						X_TIME.push.apply(X_TIME, result[i].M_TIME);
+						LIMIT_UP.push.apply(LIMIT_UP, result[i].L_UP);
+						LIMIT_MID.push.apply(LIMIT_MID, result[i].L_MID);
+						LIMIT_DOWN.push.apply(LIMIT_DOWN, result[i].L_D);
+						UCL.push.apply(UCL, result[i].UCL);
+						LCL.push.apply(LCL, result[i].LCL);
+						AVE.push.apply(AVE, result[i].AVE);
+						DIFF.push.apply(DIFF, result[i].DIFF);
+						AVE_EACH.push.apply(AVE_EACH, result[i].AVE_EACH);
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return LIMIT_UP, LIMIT_MID, LIMIT_DOWN, UCL, LCL, AVE, DIFF, AVE_EACH;
+	}
+	
+	//创建x轴数组
+	function get_x(){
+		for (i=0; i<LIMIT_UP.length; i++){
+			x_data.push(i);
+		}
+	}
+	
+	//执行异步请求	
+	get_results();
+	get_x();
+	
+	//document.write("<span style='font-size:30px;'>" + x_data + "</span>");
+	//通过echarts.init方法初始化echarts实例，并通过setOption生成图表
+	var spcChart = echarts.init(document.getElementById("spcContainer"));
+	var diffChart = echarts.init(document.getElementById("diffContainer"));
+	
+	var spc = {
+		title:{
+			text:storage.getItem('name')
+		},
+		//图表工具：保存、放大等
+		toolbox:{
+			feature:{
+				dataZoom:{
+					yAxisIndex:'none'
+				},
+				restore:{},
+				saveAsImage:{}
+			}
+		},
+		tooltip:{
+			text:true
+		},
+		//图表边框
+		grid:{
+			left: '1%',
+			right: '1%',
+			bottom: '3%',
+			containLabel: true
+		},
+		//标题，选择显示项
+		legend:{
+			data:['公差上限', '公差中值', '公差下限', '数据中值', '上控制限', '下控制限', '实测值'],
+			selectedMode:'multiple',
+			selected:{
+				'公差上限':false,
+				'公差中值':false,
+				'公差下限':false,
+				'数据中值':false,
+				'上控制限':true,
+				'下控制限':true,
+				'实测值':true
+			}
+		},
+		xAxis:{
+			data:X_TIME,
+			show:true
+		},
+		//scale自动缩放
+		yAxis:{
+			type:'value',
+			scale:true
+		},
+		dataZoom:[
+			{
+				show:true,
+				realtime:true,
+				start:25,
+				end:75,
+			},
+			{
+				type:'inside',
+				realtime:true,
+				start:50,
+				end:85,
+			}
+		],
+		series:[
+		{
+			name:'公差上限',
+			type:'line',
+			data:LIMIT_UP
+		},
+		{
+			name:'公差中值',
+			type:'line',
+			data:LIMIT_MID
+		},
+		{
+			name:'公差下限',
+			type:'line',
+			data:LIMIT_DOWN
+		},
+		{
+			name:'数据中值',
+			type:'line',
+			data:AVE
+		},
+		{
+			name:'上控制限',
+			type:'line',
+			data:UCL,
+			itemStyle:{
+				normal:{
+					color:'#ff0000',
+					lineStyle:{
+						color:'#ff0000'
+					}
+				}
+			}
+		},
+		{
+			name:'下控制限',
+			type:'line',
+			data:LCL,
+			itemStyle:{
+				normal:{
+					color:'#ff0000',
+					lineStyle:{
+						color:'#ff0000'
+					}
+				}
+			}
+		},
+		{
+			name:'实测值',
+			type:'line',
+			data:AVE_EACH,
+		}
+		]
+	};
+	
+	var diff = {
+		title:{},
+		toolbox:{
+			feature:{
+				dataZoom:{
+					yAxisIndex:'none'
+				},
+				restore:{},
+				saveAsImage:{}
+			}
+		},
+		tooltip:{
+			text:true
+		},
+		grid:{
+			left: '1%',
+			right: '1%',
+			bottom: '3%',
+			containLabel: true
+		},
+		legend:{
+			data:['极差']
+		},
+		xAxis:{
+			data:X_TIME,
+			show:true
+		},
+		yAxis:{
+			type:'value',
+			scale:true
+		},
+		dataZoom:[
+			{
+				show:true,
+				realtime:true,
+				start:25,
+				end:75,
+			},
+			{
+				type:'inside',
+				realtime:true,
+				start:50,
+				end:85,
+			}
+		],
+		series:[
+		{
+			name:'极差',
+			type:'line',
+			data:DIFF
+		}
+		]
+	};
+	
+	spcChart.setOption(spc);
+	diffChart.setOption(diff);
+	</script>
+</body>
+</html>

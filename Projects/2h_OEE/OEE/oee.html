@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="60">
+<title>CNC 2h_OEE Dashboard</title>
+<script src="./jquery-3.2.1.min.js"></script>
+<script src="./echarts.min.js"></script>
+</head>
+<body>
+	<h1 align="center">CNC 2h_OEE Dashboard</h1>
+	<hr>
+	<!--创建用于放置图表的画布-->
+	<div id='oeeContainer' style='width: 1340px; height: 325px;'></div>
+	<div id='outputContainer' style='width: 1340px; height: 325px;'></div>
+	<script>
+	//初始化数组，用于存储从数据库中提取到的数据
+	var cnc_names=[], qualitys=[], oee_shifts=[], teep_shifts=[], oee_days=[], teep_days=[], cf_totals=[], cf_outputs=[];
+	//调用ajax实现异步加载数据
+	function get_cnc(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/oee/oee_cnc.php",
+			data:{},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						cnc_names.push(result[i]);
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return cnc_names;
+	}
+	function get_shift(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/oee/oee_shift.php",
+			data:{},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						qualitys.push((100*result[i].quality));
+						oee_shifts.push((100*result[i].oee_shift).toFixed(2));
+						teep_shifts.push((100*result[i].teep_shift).toFixed(2));
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return qualitys, oee_shifts, teep_shifts;
+	}
+	function get_day(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/oee/oee_day.php",
+			data:{},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						oee_days.push((100*result[i].oee_day).toFixed(2));
+						teep_days.push((100*result[i].teep_day).toFixed(2));
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return oee_days, teep_days;
+	}
+	function get_outputs(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/oee/oee_output.php",
+			data:{},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						cf_totals.push((result[i].cf_total).toFixed(0));
+						cf_outputs.push(result[i].cf_output);
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return cf_totals, cf_outputs
+	}
+	//执行异步请求
+	get_cnc();
+	get_shift();
+	get_day();
+	get_outputs();
+	
+	//通过echarts.init方法初始化echarts实例，并通过setOption生成图表
+	var oeeChart = echarts.init(document.getElementById("oeeContainer"));
+	var outputChart = echarts.init(document.getElementById("outputContainer"));
+	
+	//调用ajax提取的数据，配置图表项
+	var oee = {
+		title:{
+			text:'Quality, OEE & TEEP',
+			x: 'left'
+		},
+		toolbox:{
+			feature:{
+				dataZoom:{
+					yAxisIndex:'none'
+				},
+				restore:{},
+				saveAsImage:{}
+			}
+		},
+		tooltip:{
+			text:true
+		},
+		grid:{
+			left: '1%',
+			right: '1%',
+			bottom: '3%',
+			containLabel: true
+		},
+		legend:{
+			orient:'horizontal',
+			top:'top',
+			left:'center',
+			data:['Quality_previous shift','OEE_previous shift', 'TEEP_previous shift', 'OEE_previous work day', 'TEEP_previous work day'],
+			selectedMode:'single'
+		},
+		dataZoom:[
+			{
+				show:true,
+				realtime:true,
+				start:25,
+				end:75,
+			},
+			{
+				type:'inside',
+				realtime:true,
+				start:50,
+				end:85,
+			}
+		],
+		xAxis:{
+			data:cnc_names
+		},
+		yAxis:{
+			type:'value',
+			axisLabel:{
+				show:true,
+				interval:'auto',
+				formatter:'{value}%'
+			}
+		},
+		series:[
+		{
+			name:'Quality_previous shift',
+			type:'line',
+			data:qualitys,
+			label:{
+				normal:{
+					show:true,
+					position:'top',
+					formatter:'{c}%'
+				}
+			}
+		},
+		{
+			name:'OEE_previous shift',
+			type:'bar',
+			data:oee_shifts,
+			barWidth:50,
+			label:{
+				normal:{
+					show:true,
+					position:'inside',
+					formatter:'{c}%'
+				}
+			}
+		},
+		{
+			name:'TEEP_previous shift',
+			type:'bar',
+			data:teep_shifts,
+			barWidth:50,
+			label:{
+				normal:{
+					show:true,
+					position:'inside',
+					formatter:'{c}%'
+				}
+			}
+		},
+		{
+			name:'OEE_previous work day',
+			type:'bar',
+			data:oee_days,
+			barWidth:50,
+			label:{
+				normal:{
+					show:true,
+					position:'inside',
+					formatter:'{c}%'
+				}
+			}
+		},
+		{
+			name:'TEEP_previous work day',
+			type:'bar',
+			data:teep_days,
+			barWidth:50,
+			label:{
+				normal:{
+					show:true,
+					position:'inside',
+					formatter:'{c}%'
+				}
+			}
+		}
+		]
+	};
+	
+	var output = {
+		title:{
+			text:'CF outputs_Current shift',
+			x: 'left'
+		},
+		toolbox:{
+			feature:{
+				dataZoom:{
+					yAxisIndex:'none'
+				},
+				restore:{},
+				saveAsImage:{}
+			}
+		},
+		tooltip:{
+			text:true
+		},
+		grid:{
+			left: '1%',
+			right: '1%',
+			bottom: '3%',
+			containLabel: true
+		},
+		legend:{
+			data:['Totals', 'Outputs']
+		},
+		dataZoom:[
+			{
+				show:true,
+				realtime:true,
+				start:25,
+				end:75,
+			},
+			{
+				type:'inside',
+				realtime:true,
+				start:50,
+				end:85,
+			}
+		],
+		xAxis:{
+			data:cnc_names
+		},
+		yAxis:{
+		type:'value',
+			axisLabel:{
+				show:true,
+				interval:'auto'
+			}
+		},
+		series:[
+		{
+			name:'Totals',
+			type:'bar',
+			data:cf_totals,
+			barWidth:50,
+			label:{
+				normal:{
+					show:true,
+					position:'top'
+				}
+			}
+		},
+		{
+			name:'Outputs',
+			type:'scatter',
+			data:cf_outputs,
+			symbolSize:20,
+			label:{
+				normal:{
+					show:true,
+					position:'top'
+				}
+			}
+		}
+		]
+	};
+	//将上述参数传递到echarts显示
+	oeeChart.setOption(oee);
+	outputChart.setOption(output);
+	
+	</script>
+</body>
+</html>

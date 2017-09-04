@@ -1,0 +1,6 @@
+- 2h_OEE.py：GUI程序，用于员工录入相关数据，并存储至mysql数据库
+- 2h_OEE.sql：创建员工、弹性体、每个机床的数据库
+- cf_db.csv：弹性体相关数据，需使用2h_OEE.sql录入数据库
+- employee_db.csv：员工相关数据，需使用2h_OEE.sql录入数据库
+- 对应表.xlsx：为2h_OEE.py内对应参数
+- OEE文件夹：对应的echarts数据可视化内容，具体需搭建环境，推荐xampp

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="120">
+<title>CNC NOVA SPC Dashboard</title>
+<script src="./jquery-3.2.1.min.js"></script>
+<script src="./echarts.min.js"></script>
+</head>
+<script>
+	//初始化数组，用于存储从数据库中提取到的数据
+	var names = [];
+
+	//调用ajax实现异步加载数据
+	function get_names(){
+		$.ajax({
+			type:"post",
+			async:false,
+			url: "http://localhost/myphp/SPC/spc_cnc.php",
+			data:{},
+			dataType:"json",
+			success: function(result){
+				if(result){
+					for (var i=0; i<result.length; i++){
+						names.push(result[i]);
+					}
+				}
+			},
+			error: function(errmsg){
+				alert("Ajax获取服务器数据出错"+errmsg);
+			}
+		});
+	return names;
+	}
+	//执行异步请求
+	get_names();
+	
+	//输入项检查
+	function checkInput(){
+		var name = document.getElementById('name').value;
+		var num = document.getElementById('num').value;
+		for (i=0; i<names.length; i++){
+			if (name == names[i]) {
+				//利用localStorage进行网页间的参数传递，本地网页不支持localStorage，必须使用localhost
+				//地址栏传递参数并不适合本例，因为跳转的网页固定，增加地址栏参数则无法打开
+				var storage = window.localStorage;
+				storage["name"] = name;
+				if (num == ''){
+					//默认显示数量为50
+					storage["num"] = 50;
+				}else{
+					storage["num"] = num;
+				}
+				return true;
+			}
+		}
+		alert('请从上面选择待查看内容！');
+		return false;
+	}
+</script>
+<body>
+	<div style="text-align: center; ">
+	<script>
+		//输出从数据库提取的所有spc的table表
+		document.write("<span style='font-size:30px;'>" + names + "</span>");
+	</script>
+	<br>
+	<br>
+	<span style="font-size: 14px;">请从上面选择一个查看！</span>
+	<form method="post" action="http://localhost/myphp/SPC/spc_2.html" onsubmit="return checkInput()">
+		内容：<input type="text" id="name" style="width: 150px; height: 15px;"><br>
+		数量：<input type="text" id="num" style="width: 150px; height: 15px;"><br>
+		<input type="submit" value="提交" style="width: 60px;height: 25px; font-size: 15px;">
+	</form>
+	<img src="./xampp.JPG" style="position:absolute; right:0px; bottom:0px;">
+	</div>
+</body>
+</html>
